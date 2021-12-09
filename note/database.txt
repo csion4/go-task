@@ -1,0 +1,29 @@
+-- 任务表
+create table tasks '任务表';
+
+-- 任务步骤表
+create table task_stages (
+    `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `task_id` int(11) NOT NULL COMMENT '任务标识',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+    `create_user` int(11) DEFAULT NULL COMMENT '创建人',
+    `update_user` int(11) DEFAULT NULL COMMENT '更新人',
+    `status` tinyint(100) NOT NULL DEFAULT '1' COMMENT '1 可以，0 删除',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COMMENT= '任务步骤表';
+
+-- 任务环境表
+CREATE TABLE `tasks_env` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `task_id` int(11) NOT NULL COMMENT '任务标识',
+  `stage_id` int(11) NOT NULL COMMENT '节点标识',
+  `param` varchar(256) DEFAULT NULL COMMENT '环境参数',
+  `value` text DEFAULT NULL COMMENT '环境值',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  `create_user` int(11) DEFAULT NULL COMMENT '创建人',
+  `update_user` int(11) DEFAULT NULL COMMENT '更新人',
+  `status` tinyint(100) NOT NULL DEFAULT '1' COMMENT '1 可以，0 删除',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COMMENT='任务环境表';
