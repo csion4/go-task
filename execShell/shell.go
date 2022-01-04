@@ -1,111 +1,99 @@
 package execShell
 
-//func main() {
-//	//// 在宿主机中执行shell脚本
-//	//cmd := exec.Command("cmd", "/C", "dir", "set aa=qwe123", "echo %aa%")
-//	//cmd.Dir = "D:/"
-//	//
-//	//output, err := cmd.CombinedOutput()
-//	//if err != nil {
-//	//	panic(err.Error())
-//	//}
-//	//fmt.Println(string(output))
-//
-//	c := exec.Command("bash", "-c", "ping www.baidu.com")  // mac or linux
-//	stdout, err := c.StdoutPipe()
-//	if err != nil {
-//		panic(err)
-//	}
-//	var wg sync.WaitGroup
-//	wg.Add(1)
-//	go func() {
-//		defer wg.Done()
-//		reader := bufio.NewReader(stdout)
-//		for {
-//			readString, err := reader.ReadString('\n')
-//			if err != nil || err == io.EOF {
-//				return
-//			}
-//			fmt.Print(readString)
-//		}
-//	}()
-//	err = c.Start()
-//	wg.Wait()
-//	if err != nil {
-//		panic(err)
-//	}
-//}
+import (
+	"bufio"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"io"
+	"os"
+	"os/exec"
+)
 
-//type Charset string
-//
-//const (
-//	UTF8    = Charset("UTF-8")
-//	GB18030 = Charset("GB18030")
-//)
+type Charset string
 
-//func main1() {
-//	ctx, cancel := context.WithCancel(context.Background())
-//	go func(cancelFunc context.CancelFunc) {
-//		time.Sleep(5 * time.Second)
-//		cancelFunc()
-//	}(cancel)
-//	err := Command(ctx, "ping www.baidu.com -n 6")
-//	if err != nil {
-//		panic(err)
-//	}
-//}
-//
-//func read(ctx context.Context, wg *sync.WaitGroup, std io.ReadCloser) {
-//	reader := bufio.NewReader(std)
-//	defer wg.Done()
-//	for {
-//		select {
-//		case <-ctx.Done():
-//			return
-//		default:
-//			readString, err := reader.ReadString('\n')
-//			if err != nil || err == io.EOF {
-//				return
-//			}
-//			byte2String := ConvertByte2String([]byte(readString), "GBK")
-//			fmt.Print(byte2String)
-//		}
-//	}
-//}
-//
-////func ConvertByte2String(byte []byte, charset Charset) string {
-////	var str string
-////	switch charset {
-////	case GB18030:
-////		var decodeBytes, _ = simplifiedchinese.GB18030.NewDecoder().Bytes(byte)
-////		str = string(decodeBytes)
-////	case UTF8:
-////		fallthrough
-////	default:
-////		str = string(byte)
-////	}
-////	return str
-////}
-//
-//func Command(ctx context.Context, cmd string) error {
-//	//c := exec.CommandContext(ctx, "cmd", "/C", cmd) // windows
-//	c := exec.CommandContext(ctx, "bash", "-c", cmd) // mac linux
-//	stdout, err := c.StdoutPipe()
-//	if err != nil {
-//		return err
-//	}
-//	stderr, err := c.StderrPipe()
-//	if err != nil {
-//		return err
-//	}
-//	var wg sync.WaitGroup
-//	// 因为有2个任务, 一个需要读取stderr 另一个需要读取stdout
-//	wg.Add(2)
-//	go read(ctx, &wg, stderr)
-//	go read(ctx, &wg, stdout)
-//	// 这里一定要用start,而不是run 详情请看下面的图
-//	err = c.Start()
-//	// 等待任务结束
-//	wg.Wait()
-//	return err
-//}
+const (
+	UTF8    = Charset("UTF-8")
+	GB18030 = Charset("GB18030")
+)
+
+//执行shell脚本
+func ExecShell(cmd string, dir string, file *os.File) {
+	_, err := file.Write([]byte("[script]: " + cmd + " \n"))
+	if err != nil {
+		panic(err)
+	}
+	command := exec.Command("cmd", "/C", cmd)
+	command.Dir = dir
+
+	pipe, err1 := command.StdoutPipe()
+	if err1 != nil {
+		panic(err1)
+	}
+	defer pipe.Close()
+
+	if err2 := command.Start(); err2 != nil {
+		panic(err2)
+	}
+
+	reader := bufio.NewReader(pipe)
+	for ;; {
+		line, _, err := reader.ReadLine()
+		if err == io.EOF {
+			return
+		} else if err != nil {
+			panic(err)
+		}
+
+		_, err = file.Write(append(line, ' ', '\n'))
+		if err != nil {
+			panic(err)
+		}
+
+	}
+
+
+
+	//reader := bufio.NewReader(pipe)
+	// writer, file := logToFile("log1.log")
+	//for ;; {
+	//	line, _, err := reader.ReadLine()
+	//	if err == io.EOF {
+	//		_ = writer.Flush()
+	//		_ = file.Close()
+	//		return
+	//	}
+	//	byte2String := convertByte2String(line, "GB18030")
+	//	fmt.Println(byte2String)
+	//	_, err = writer.WriteString(byte2String + "\n")
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	// _ = writer.Flush() // 这里不用做成实时刷新到file中
+	//}
+
+}
+
+
+
+func convertByte2String(byte []byte, charset Charset) string {
+	var str string
+	switch charset {
+	case GB18030:
+		var decodeBytes, _ = simplifiedchinese.GB18030.NewDecoder().Bytes(byte)
+		str = string(decodeBytes)
+	case UTF8:
+		fallthrough
+	default:
+		str = string(byte)
+	}
+	return str
+}
+
+func logToFile (fileName string) (*bufio.Writer, *os.File) {
+	file, err := os.OpenFile("E:\\tasks\\log\\test2\\"+fileName, os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		panic(err)
+	}
+
+	return bufio.NewWriter(file), file
+
+}

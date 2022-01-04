@@ -1,0 +1,43 @@
+先写功能，等整体出来后再重构出v1.0
+
+
+stage配置json：
+{
+	"taskId": 0,
+	"stages": [
+		{
+			"stageType": 1,
+			"envs": {
+				"gitUrl": "http://@10.124.192.127/guozh/ttt.git",
+				"authType": "2",
+				"gitUser": "guozh",
+				"gitPasswd": "Tianti@2019",
+				"branch": "master"
+			}
+		},
+		{
+			"stageType": 2,
+			"envs": {
+				"script": "mvn clean package"
+			}
+		},
+		{
+			"stageType": 3,
+			"envs": {
+				"url": "http://127.0.0.1:8080",
+				"type": "get"
+			}
+		},
+		{
+			"stageType": 4,
+			"envs": {
+				"ip": "192.168.13.130",
+				"userName": "root",
+				"password": "123456",
+				"source": "./target/xx.jar",
+				"target": "/home/csion",
+				"script": "ls"
+			}
+		}
+	]
+}

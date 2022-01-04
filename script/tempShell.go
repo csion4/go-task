@@ -5,7 +5,7 @@ import "os"
 // 创建临时shell脚本
 func CreateTempShell(scriptDir string, scripts string) string {
 
-	file, err := os.Create(scriptDir + "temp.bat")
+	file, err := os.Create(scriptDir + "/temp.bat")
 	if err != nil {
 		panic(err)
 	}

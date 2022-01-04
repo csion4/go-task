@@ -2,25 +2,44 @@ package main
 
 import (
 	"com.csion/tasks/controller"
+	"com.csion/tasks/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 // 全局路由配置
 func Route(r *gin.Engine) *gin.Engine {
-	taskGroup := r.Group("/task")	// 任务创建
-	taskGroup.POST("", controller.AddJob)	// controller.AddJob就是一个type HandlerFunc func(*Context)类型
-	taskGroup.DELETE("", controller.DelJob)
-	taskGroup.GET("", controller.GetJobs)
+
+	r.Use(middleware.CORSMiddleware(), middleware.RecoveryMiddleware())
+
+	// 注册登陆
+	r.POST("/register", controller.Register)
+	r.POST("/login", controller.Login)
 
 
-	layoutGroup := r.Group("/taskLayout") 	// 任务编排
+	taskGroup := r.Group("/task", middleware.AuthMiddleware())	// 任务创建
+	taskGroup.POST("", controller.AddTask) // controller.AddJob就是一个type HandlerFunc func(*Context)类型
+	taskGroup.DELETE("", controller.DelTask)
+	taskGroup.GET("", controller.GetTasks)
+
+
+	layoutGroup := r.Group("/taskLayout", middleware.AuthMiddleware()) 	// 任务编排
 	layoutGroup.POST("/layoutTask", controller.LayoutTask)
-	layoutGroup.GET("/layoutInfo", controller.LayoutInfo)
+	layoutGroup.GET("/layoutInfo", controller.TaskLayoutInfo)
 
-	runGroup := r.Group("/run") 	//构建任务
+	runGroup := r.Group("/run", middleware.AuthMiddleware()) 	//构建任务
 	runGroup.GET("", controller.RunJob)
 
-	r.GET("/hello", controller.Hello)
+	taskRecord := r.Group("/record", middleware.AuthMiddleware()) // 执行记录
+	taskRecord.GET("", controller.GetTaskRecord)
+	taskRecord.GET("/taskLog", controller.GetTaskLog)
+
+
+	wsGroup := r.Group("/ws")  // websocket
+	wsGroup.GET("/taskLog", controller.GetTaskLogForWS)
+	wsGroup.GET("/taskStage", controller.UpdateTaskRecord)
+
+
+ 	r.GET("/hello", middleware.AuthMiddleware(), controller.Hello)
 
 	return r
 }
