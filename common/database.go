@@ -1,17 +1,29 @@
 package common
 
 import (
+	_ "com.csion/tasks/config" // 加载配置文件
+	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var db *gorm.DB
-// 初始化数据库连接，获取数据库实例
-func initDB(){
+
+// 初始化数据库连接
+func init(){
 	var err error
-	db, err = gorm.Open(mysql.Open("root:123456@tcp(127.0.0.1:3306)/task?"+
-		"charset=utf8&parseTime=True&loc=Asia%2FShanghai"),
-		&gorm.Config{})
+	mysqlUrl := viper.GetString("mysql.dsn")
+	printSql := viper.GetString("gorm.printSql")
+
+	var config gorm.Config
+	if printSql == "true" {
+		config = gorm.Config{Logger: logger.Default.LogMode(logger.Info)}
+	} else {
+		config = gorm.Config{}
+	}
+
+	db, err = gorm.Open(mysql.Open(mysqlUrl), &config)
 
 	if err != nil {
 		panic(err)
@@ -24,10 +36,6 @@ func initDB(){
 	//}
 }
 
-// 需要单例吗？应该是启动时就初始化了，可以暂时不用单例
 func GetDb() *gorm.DB {
-	if db == nil {
-		initDB()
-	}
 	return db
 }

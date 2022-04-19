@@ -5,12 +5,13 @@ import (
 	"com.csion/tasks/dto"
 	"com.csion/tasks/execShell"
 	"com.csion/tasks/script"
+	"com.csion/tasks/utils"
+	"github.com/spf13/viper"
 	"log"
 	"os"
 	"strconv"
 )
 
-const baseDir = "E:/tasks/"
 var chanMap = make(map[string]chan int) // >1:表示各个节点，0：全部完成，-1：当前节点异常了
 
 // 构建任务
@@ -18,6 +19,7 @@ func RunTask(taskCode string, taskId int, recordId int){
 	var stage []dto.TaskStages
 	db := common.GetDb()
 
+	// 兜底修改任务状态为异常
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -27,36 +29,42 @@ func RunTask(taskCode string, taskId int, recordId int){
 		}
 	}()
 
+	// 查询任务节点
 	find := db.Raw("select * from task_stages where task_id = ? and status =1", taskId).Scan(&stage)
 	if find.Error != nil {
 		log.Fatal(find.Error)
 	}
 
-
-	file, err := os.OpenFile(baseDir + "log/" + taskCode + "/" + taskCode + "_" + strconv.Itoa(recordId) + ".log", os.O_CREATE|os.O_APPEND|os.O_SYNC, 0777)
+	// 创建并获取日志文件
+	taskLogDir := viper.GetString("taskLog") + taskCode + "/"
+	if err := utils.CreateDir(taskLogDir, 0666); err != nil{
+		log.Fatal(err)
+	}
+	file, err := os.OpenFile(taskLogDir + taskCode + "_" + strconv.Itoa(recordId) + ".log", os.O_CREATE|os.O_APPEND|os.O_SYNC, 0666)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer func() {
 		r := recover()
 		if r != nil {
-			log.Println(r)
+			log.Fatal(r)
 			//file.Write([]byte(r.(string))) // todo: how write to log file
 		}
-		file.Close()
+		_ = file.Close()
 	}()
 
+	// 执行stage
 	for n, value := range stage {
-		beforeState(taskId, recordId, value.StageType)
+		beforeState(taskId, recordId, value.StageType, taskCode)
 		env := getEnv(value.Id)
 		switch value.StageType {
 		case 1:
 			file.Write([]byte("----【start stage clone git project】---- \n"))
-			Git(env["gitUrl"], env["branch"], baseDir + taskCode, file)
+			Git(env["gitUrl"], env["branch"], viper.GetString("taskWorkspace") + taskCode, file)
 			break
 		case 2:
 			file.Write([]byte("----【start stage exec script】---- \n"))
-			ExecScript(env["script"], baseDir + "temp/" + taskCode , baseDir + taskCode, file)
+			ExecScript(env["script"], viper.GetString("taskWorkspace") + taskCode + "@script" , viper.GetString("taskWorkspace") + taskCode, file)
 			break
 		case 3:
 			// HttpInvoke()
@@ -75,10 +83,23 @@ func RunTask(taskCode string, taskId int, recordId int){
 	db.Exec(`update task_exec_recode_` + strconv.Itoa(taskId) + ` set task_status = 2, update_time = now() where task_status = 1`)
 }
 
-func beforeState(taskId int, recordId int, stageType int) {
+// 开始stage执行之前
+func beforeState(taskId int, recordId int, stageType int, taskCode string) {
+	// 更新状态
 	db := common.GetDb()
 	db.Exec("update task_exec_stage_result_" + strconv.Itoa(taskId) + " set stage_status = 1, create_time = now() " +
 		"where record_id = ? and stage_type = ? and stage_status = 0 ORDER by id LIMIT 1", recordId, stageType)
+
+	// 初始化目录
+	if err := utils.CreateDir(viper.GetString("taskWorkspace") + taskCode, 0666); err != nil{
+		log.Fatal(err)
+	}
+	if err := utils.CreateDir(viper.GetString("taskWorkspace") + taskCode + "@script", 0666); err != nil{
+		log.Fatal(err)
+	}
+
+
+
 }
 
 func afterState(taskId int, recordId int, stageType int, stageStatus int, n int) { // todo: 这个暂时所有的结果执行结果都是真确的，不考虑错误的情况
@@ -96,7 +117,7 @@ func getEnv(stageId int) (env map[string]string) {
 	db := common.GetDb()
 	find := db.Where("stage_id = ? and status = 1", stageId).Find(&tasksEnv)
 	if find.Error != nil {
-		panic(find.Error)
+		log.Fatal(find.Error)
 	}
 
 	env = make(map[string]string, len(tasksEnv))

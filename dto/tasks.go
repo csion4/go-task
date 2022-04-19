@@ -6,11 +6,11 @@ type Tasks struct {
 	Id int			`json:"id"`
 	Title string	`json:"title"`
 	TaskCode string `json:"taskCode"`
-	TaskStatus int  `json:"taskStatus"`
-	CreateTime time.Time `json:"createTime"`
-	UpdateTime time.Time `gorm:"default:null" json:"updateTime"`
-	CreateUser int	`json:"createUser"`
-	UpdateUser int	`gorm:"default:null" json:"updateUser"`
+	TaskStatus int
+	CreateTime time.Time
+	UpdateTime time.Time `gorm:"default:null"`
+	CreateUser int
+	UpdateUser int	`gorm:"default:null"`
 }
 
 type TaskEnvs struct {

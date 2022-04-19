@@ -1,5 +1,11 @@
 server:
-  port: 9044
+  port: 127.0.0.1:9044
 
 mysql:
   dsn: "root:123456@tcp(127.0.0.1:3306)/task?charset=utf8&parseTime=True&loc=Asia%2FShanghai"
+
+gorm:
+  printSql: true
+
+task:
+  home: D:\csion.project\Go\code\taskHome\

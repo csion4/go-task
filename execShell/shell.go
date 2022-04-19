@@ -89,7 +89,7 @@ func convertByte2String(byte []byte, charset Charset) string {
 }
 
 func logToFile (fileName string) (*bufio.Writer, *os.File) {
-	file, err := os.OpenFile("E:\\tasks\\log\\test2\\"+fileName, os.O_CREATE|os.O_APPEND, 0777)
+	file, err := os.OpenFile("E:\\tasks\\log\\test2\\"+fileName, os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		panic(err)
 	}

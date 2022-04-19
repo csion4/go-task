@@ -1,0 +1,72 @@
+basePath: /
+definitions:
+  vo.RegisterReq:
+    properties:
+      name:
+        type: string
+      passWord:
+        type: string
+      test:
+        type: integer
+    type: object
+host: 127.0.0.1:9044
+info:
+  contact:
+    email: csion4@163.com
+    name: csion
+    url: https://github.com/csion4
+  description: task
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: https://github.com/csion4/go-task
+  title: task
+  version: "1.0"
+paths:
+  /login:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 用户登录
+      parameters:
+      - description: 用户名
+        in: formData
+        name: user
+        required: true
+        type: string
+      - description: 密码
+        in: formData
+        name: password
+        required: true
+        type: string
+      responses:
+        "200":
+          description: ""
+        "400":
+          description: ""
+      summary: 用户登录
+      tags:
+      - UserController
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: 用户注册
+      parameters:
+      - description: 注册信息
+        in: body
+        name: param
+        required: true
+        schema:
+          $ref: '#/definitions/vo.RegisterReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "400":
+          description: ""
+      summary: 用户注册
+      tags:
+      - UserController
+swagger: "2.0"

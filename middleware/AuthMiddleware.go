@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// 权限校验中间件
 func AuthMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		//获取authorization header

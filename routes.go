@@ -6,10 +6,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var swaggerHandler gin.HandlerFunc	// 通过判断swaggerHandler是否初始化来判断是否需要加载
+
 // 全局路由配置
 func Route(r *gin.Engine) *gin.Engine {
 
-	r.Use(middleware.CORSMiddleware(), middleware.RecoveryMiddleware())
+	if swaggerHandler != nil {
+		r.GET("/swagger/*any", swaggerHandler)	// 添加swagger路由
+	}
+
+	r.Use(middleware.CORSMiddleware(), middleware.RecoveryMiddleware())		// 添加跨域处理中间件和异常处理中间件
 
 	// 注册登陆
 	r.POST("/register", controller.Register)

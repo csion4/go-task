@@ -8,6 +8,7 @@ import (
 	"com.csion/tasks/task"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/spf13/viper"
 	"io"
 	"log"
 	"net/http"
@@ -34,7 +35,7 @@ func Hello(c *gin.Context){
 func AddTask(c *gin.Context){
 	// 绑定参数
 	var tasks dto.Tasks
-	err := c.Bind(&tasks)
+	err := c.ShouldBind(&tasks)
 	if err != nil {
 		panic(err)
 	}
@@ -97,13 +98,15 @@ func GetTasks(c *gin.Context){
 func RunJob(c *gin.Context){
 	taskCode := c.Query("taskCode")
 
+	// 根据taskCode查找task信息
 	db := common.GetDb()
-
 	var taskDto dto.Tasks
 	find := db.Where("task_code = ? and status =1", taskCode).Find(&taskDto)
 	if find.Error != nil {
 		panic(find.Error)
 	}
+
+	// 通过判断task的状态判断是否需要初始化任务执行记录表
 	if taskDto.TaskStatus == 0 {
 		exec := db.Exec(`create table task_exec_recode_` + strconv.Itoa(taskDto.Id) + ` (
     id int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -129,11 +132,13 @@ func RunJob(c *gin.Context){
 		}
 	}
 
+	// 更新任务状态
 	result := db.Exec("update tasks set task_status = 1 where task_code = ?", taskCode)
 	if result.Error != nil {
 		panic(result.Error)
 	}
 
+	// 向任务执行记录表中插入数据
 	db.Exec(`insert into task_exec_recode_` + strconv.Itoa(taskDto.Id) + ` (task_status, create_time) values 
 	(1, now())`)
 	var recordId int
@@ -142,19 +147,18 @@ func RunJob(c *gin.Context){
 	var stages []dto.TaskStages
 	find = db.Raw("select * from task_stages where task_id = ? and status =1", taskDto.Id).Scan(&stages)
 	if find.Error != nil {
-		log.Fatal(find.Error)
+		panic(find.Error)
 	}
 	for _, stage := range stages {
 		db.Exec("insert into task_exec_stage_result_" + strconv.Itoa(taskDto.Id) + " (record_id, stage_type, stage_status) " +
 			"values (?, ? , 0)", recordId, stage.StageType)
 	}
 
+	// 异步构建任务
 	go task.RunTask(taskCode, taskDto.Id, recordId)
 
 	response.Success(c, gin.H{"recordId": recordId}, "任务发起成功")
 }
-
-const baseDir = "E:/tasks/"
 
 func GetTaskLogForWS(c *gin.Context) {
 	recordId := c.Query("recordId")
@@ -169,7 +173,8 @@ func GetTaskLogForWS(c *gin.Context) {
 	}
 	defer ws.Close()
 
-	reader, _ := logFromFile(baseDir + "log/" + taskCode + "/" + taskCode + "_" + recordId + ".log")
+	reader, file := logFromFile(viper.GetString("taskLog") + taskCode + "/" + taskCode + "_" + recordId + ".log")
+	defer file.Close()
 
 	// buf := make([]byte, 64)
 	db := common.GetDb()
@@ -205,7 +210,8 @@ func GetTaskLog(c *gin.Context) {
 	taskCode := c.Query("taskCode")
 	LF := c.DefaultQuery("linefeed", "\n")
 
-	reader, _ := logFromFile(baseDir + "log/" + taskCode + "/" + taskCode + "_" + recordId + ".log")
+	reader, file := logFromFile(viper.GetString("taskLog") + taskCode + "/" + taskCode + "_" + recordId + ".log")
+	defer file.Close()
 	var buf []byte
 	for {
 		line, _, err := reader.ReadLine()
@@ -223,12 +229,11 @@ func GetTaskLog(c *gin.Context) {
 }
 
 func logFromFile (filePath string) (*bufio.Reader, *os.File) {
-	file, err := os.OpenFile(filePath, os.O_RDONLY, 0777)
+	file, err := os.OpenFile(filePath, os.O_RDONLY, 0666)
 	if err != nil {
-		panic(err)
+		panic("没找到对应任务的历史记录，可能已清理！")
 	}
 
 	return bufio.NewReader(file), file
-
 }
 

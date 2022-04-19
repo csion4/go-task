@@ -15,7 +15,7 @@ import (
 // 任务步骤编排
 func LayoutTask(c *gin.Context){
 	var stages module.LayoutTask
-	err := c.Bind(&stages)
+	err := c.ShouldBind(&stages)
 	if err != nil {
 		panic(err)
 	}
@@ -28,7 +28,7 @@ func LayoutTask(c *gin.Context){
 	db := common.GetDb()
 
 	// 清除原来数据
-	db.Exec("update task_stages set status  = 0, update_time = now(), update_user = ? where task_id = ?", 1, taskId)
+	db.Exec("update task_stages set status = 0, update_time = now(), update_user = ? where task_id = ?", 1, taskId)
 
 	// 存表
 	for n, v := range s {
