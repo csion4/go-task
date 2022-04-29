@@ -1,0 +1,16 @@
+tlog:
+  out:  file, console, myOut  # 输出
+  level:
+    default: info  # 全局默认级别，info，可以不配置
+  format: "%d%t%m [%l] %f"  # 2022/01/01 00:00:00.123 [info] /a/b/c.go:23: 日志输出内容，
+  conf:
+    - file:
+        name: task.log       # log日志名称，默认项目名称
+#        path: log/       # 支持相对路径和绝对路径
+        level: debug   # 会覆盖默认level
+        maxSize: 200K       # 日志大小，如果配置了，则会触发文件分割，按照时间划分 eg:100K,10M,1G
+#         maxNum: 10          # 最大现存日志数 待实现
+#    - stdout:
+#        level: debug   # 会覆盖默认level
+#    - myOut:          # 自定义out，通过反射获取io.writer
+#        xx: todo

@@ -4,6 +4,7 @@ import (
 	"com.csion/tasks/common"
 	"com.csion/tasks/dto"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"net/http"
 	"strings"
 )
@@ -53,6 +54,17 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 		//用户存在 将user信息写入上下文
 		ctx.Set("user",user)
+		ctx.Next()
+	}
+}
+
+func WorkerAuthMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		auth := ctx.GetHeader("auth")
+		if auth != viper.GetString("task.worker.Auth") {
+			ctx.Abort()
+			return
+		}
 		ctx.Next()
 	}
 }

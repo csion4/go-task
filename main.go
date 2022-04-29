@@ -3,31 +3,13 @@ package main
 import (
 	_ "com.csion/tasks/common" // 初始化数据库链接
 	_ "com.csion/tasks/config" // 加载配置文件
+	"com.csion/tasks/tLog"
 	"com.csion/tasks/utils"
 	"github.com/gin-gonic/gin"
-	"strings"
-
-	// "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"strings"
 )
 
-//// 日志组件
-//var log = logrus.New()
-//
-//func init() {
-//	// Log as JSON instead of the default ASCII formatter.
-//	log.Formatter = &logrus.JSONFormatter{}
-//	// Output to stdout instead of the default stderr
-//	// Can be any io.Writer, see below for File example
-//	f, _ := os.Create("./gin.log")
-//	log.Out = f
-//	gin.SetMode(gin.DebugMode)
-//	gin.DefaultWriter = log.Out
-//	// Only log the warning severity or above.
-//	log.Level = logrus.DebugLevel
-//	log.Debug("111111111111")
-//	log.Errorln()
-//}
 
 func init() {
 	// 初始化工作目录 taskHome、 taskHome/log、 taskHome/workspace
@@ -44,10 +26,9 @@ func init() {
 
 	viper.Set("taskLog", taskHome + "log/")
 	viper.Set("taskWorkspace", taskHome + "workspace/")
-
-
 }
 
+var tLogger = tLog.GetTLog()
 
 // @title task
 // @version 1.0
@@ -69,5 +50,4 @@ func main() {
 	r = Route(r)
 	// 启动gin
 	panic(r.Run(viper.GetString("server.port")))
-
 }

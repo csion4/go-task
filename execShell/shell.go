@@ -35,7 +35,7 @@ func ExecShell(cmd string, dir string, file *os.File) {
 	}
 
 	reader := bufio.NewReader(pipe)
-	for ;; {
+	for {
 		line, _, err := reader.ReadLine()
 		if err == io.EOF {
 			return

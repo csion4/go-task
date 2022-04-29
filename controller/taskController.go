@@ -2,6 +2,7 @@ package controller
 
 import (
 	"bufio"
+	"com.csion/tasks/cluster"
 	"com.csion/tasks/common"
 	"com.csion/tasks/dto"
 	"com.csion/tasks/response"
@@ -17,9 +18,11 @@ import (
 	"time"
 )
 
+var clusterTask = viper.GetString("task.cluster")
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize: 10,
-	WriteBufferSize: 10,
+	WriteBufferSize: 512,
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
@@ -155,7 +158,11 @@ func RunJob(c *gin.Context){
 	}
 
 	// 异步构建任务
-	go task.RunTask(taskCode, taskDto.Id, recordId)
+	if clusterTask == "true" {
+		go cluster.DoClusterTask(taskCode, taskDto.Id, recordId)
+	} else {
+		go task.RunTask(taskCode, taskDto.Id, recordId)
+	}
 
 	response.Success(c, gin.H{"recordId": recordId}, "任务发起成功")
 }

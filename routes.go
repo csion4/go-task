@@ -44,8 +44,12 @@ func Route(r *gin.Engine) *gin.Engine {
 	wsGroup.GET("/taskLog", controller.GetTaskLogForWS)
 	wsGroup.GET("/taskStage", controller.UpdateTaskRecord)
 
+	cluster := r.Group("/cluster", middleware.AuthMiddleware())		// 集群管控
+	cluster.POST("/addWorker", controller.AddWorker)
 
- 	r.GET("/hello", middleware.AuthMiddleware(), controller.Hello)
+	r.GET("/ws/clusterResp", middleware.WorkerAuthMiddleware(), controller.ClusterResp)	// worker节点日志回写
+
+	r.GET("/hello", middleware.AuthMiddleware(), controller.Hello)
 
 	return r
 }

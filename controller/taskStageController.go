@@ -157,7 +157,7 @@ func GetTaskRecord(c *gin.Context)  {
 		var LastStage = 1
 		for i, stageResult := range result {
 			result[i].StageTypeStr = getStageName(stageResult.StageType)
-			if (stageResult.StageStatus > 0){
+			if stageResult.StageStatus > 0 {
 				LastStageStatus = stageResult.StageStatus
 				LastStage = i
 			}
@@ -184,7 +184,7 @@ func UpdateTaskRecord(c *gin.Context)  {
 	defer ws.Close()
 	defer task.RemoveChan(taskId, recordId)
 
-	for ;; {
+	for {
 		stage := <- ch
 		err = ws.WriteMessage(websocket.TextMessage, []byte(strconv.Itoa(stage)))
 		if err != nil {
