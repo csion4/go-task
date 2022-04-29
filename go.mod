@@ -3,14 +3,14 @@ module com.csion/tasks
 go 1.16
 
 require (
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/go-playground/validator/v10 v10.10.0 // indirect
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/gorilla/websocket v1.4.2
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/pkg/sftp v1.10.1
-	github.com/spf13/cast v1.4.1 // indirect
+	github.com/spf13/cast v1.4.1
 	github.com/spf13/viper v1.10.1
 	github.com/swaggo/gin-swagger v1.4.1
 	github.com/swaggo/swag v1.8.1

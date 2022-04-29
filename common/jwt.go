@@ -2,7 +2,7 @@ package common
 
 import (
 	"com.csion/tasks/dto"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"time"
 )
 
