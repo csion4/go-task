@@ -1,5 +1,5 @@
 tlog:
-  out:  file, console # 输出
+  out: console # 输出
   level:
     default: info  # 全局默认级别，info，可以不配置
   format: "%d%t%m [%l] %f"  # 2022/01/01 00:00:00.123 [info] /a/b/c.go:23: 日志输出内容，

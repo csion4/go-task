@@ -11,7 +11,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -20,6 +19,7 @@ import (
 
 var clusterTask = viper.GetString("task.cluster")
 
+// 配置webSocket参数
 var upgrader = websocket.Upgrader{
 	ReadBufferSize: 10,
 	WriteBufferSize: 512,
@@ -38,10 +38,7 @@ func Hello(c *gin.Context){
 func AddTask(c *gin.Context){
 	// 绑定参数
 	var tasks dto.Tasks
-	err := c.ShouldBind(&tasks)
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("入参异常：", c.ShouldBind(&tasks))
 
 	// 存表
 	var r string
@@ -200,7 +197,7 @@ func GetTaskLogForWS(c *gin.Context) {
 			//break
 		}
 		if err != nil {
-			log.Println(err)
+			//log.Println(err)
 		}
 		if err == nil {
 			err = ws.WriteMessage(websocket.TextMessage, line)

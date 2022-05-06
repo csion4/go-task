@@ -2,38 +2,41 @@ package common
 
 import (
 	_ "com.csion/tasks/config" // 加载配置文件
+	"com.csion/tasks/tLog"
+	tLogAdapter "com.csion/tasks/tLogApapter"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"time"
 )
 
 var db *gorm.DB
 
+var log = tLog.GetTLog()
 // 初始化数据库连接
 func init(){
-	var err error
 	mysqlUrl := viper.GetString("mysql.dsn")
 	printSql := viper.GetString("gorm.printSql")
 
-	var config gorm.Config
+	var LogLevel logger.LogLevel
 	if printSql == "true" {
-		config = gorm.Config{Logger: logger.Default.LogMode(logger.Info)}
+		LogLevel = logger.Info
 	} else {
-		config = gorm.Config{}
+		LogLevel = logger.Error
 	}
 
-	db, err = gorm.Open(mysql.Open(mysqlUrl), &config)
+	var err error
+	db, err = gorm.Open(mysql.Open(mysqlUrl),
+		&gorm.Config{Logger: logger.New(
+			&tLogAdapter.TLogGormAdapter{},						// 指定输出writer
+			logger.Config{										// 增加配置
+				SlowThreshold: 1 * time.Microsecond,			// 配置慢sql耗时标准，默认 200 * time.Millisecond
+				LogLevel:      LogLevel,						// 打开Warn级别的日志，其实如果我们不需要修改其他配置比如SlowThreshold可以直接设置当前输出日志级别Warn即可
+		}),
+	})
 
-	if err != nil {
-		panic(err)
-	}
-
-	// 使用gorm创建表
-	//e := db.AutoMigrate(&module.User{})
-	//if e != nil {
-	//	panic(e)
-	//}
+	log.Panic2("GORM初始化异常：", err)
 }
 
 func GetDb() *gorm.DB {

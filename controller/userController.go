@@ -4,11 +4,14 @@ import (
 	"com.csion/tasks/common"
 	"com.csion/tasks/dto"
 	"com.csion/tasks/response"
+	"com.csion/tasks/tLog"
 	"com.csion/tasks/vo"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"time"
 )
+
+var log = tLog.GetTLog()
 
 // @Summary 用户注册
 // @Description 用户注册
@@ -22,18 +25,14 @@ import (
 func Register(c *gin.Context){
 	// 绑定参数
 	var req vo.RegisterReq
-	err := c.ShouldBind(&req)
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("入参异常：", c.ShouldBind(&req))
 
 	var user = &dto.Users{Name: req.Name, Password: req.PassWord}
 
 	// 密码加密
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("加密异常：", err)
+
 	user.Password = string(hashedPassword)
 
 	// 存表
@@ -41,9 +40,7 @@ func Register(c *gin.Context){
 	user.CreateTime = time.Now()
 	user.CreateUser = 1
 	db = db.Create(&user)
-	if db.Error != nil {
-		panic(db.Error)
-	}
+	log.Panic2("数据插入异常：", db.Error)
 
 	response.Success(c, nil, "注册成功")
 }
@@ -59,33 +56,25 @@ func Register(c *gin.Context){
 // @Router /login [post]
 func Login(c *gin.Context){
 	var login vo.LoginReq
-	errBind := c.ShouldBind(&login)
-	if errBind != nil {
-		panic(errBind)
-	}
+	log.Panic2("入参异常：", c.ShouldBind(&login))
 
 	var user dto.Users
 	db := common.GetDb()
 	db = db.Where("name = ?", login.Name).Find(&user)
-	if db.Error != nil {
-		panic(db.Error)
-	}
+	log.Panic2("用户查询异常：", db.Error)
+
 	if user.Id == 0 {
-		response.Fail(c, nil, "用户名密码错误")
-		return
+		log.Panic1("用户名不存在")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(login.Password));err != nil {
-		response.Fail(c, nil, "用户名密码错误")
-		return
-	}
+	log.Panic2("用户名密码错误", bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(login.Password)))
 
 	// 密码正确发放token给前端
 	token,errToken := common.ReleaseToken(user)
 	if errToken != nil{
-		response.Fail(c, nil, "生成token失败")
-		return
+		log.Panic2("生成token失败：", errToken)
 	}
 
+	log.Info("用户", login.Name, "登录")
 	response.Success(c, gin.H{"token": token, "userName": login.Name}, "登陆成功")
 }

@@ -4,8 +4,8 @@ import "time"
 
 type Tasks struct {
 	Id int			`json:"id"`
-	Title string	`json:"title"`
-	TaskCode string `json:"taskCode"`
+	Title string	`json:"title" binding:"required"`
+	TaskCode string `json:"taskCode" binding:"required"`
 	TaskStatus int
 	CreateTime time.Time
 	UpdateTime time.Time `gorm:"default:null"`
