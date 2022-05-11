@@ -2,10 +2,12 @@ package execShell
 
 import (
 	"bufio"
+	"com.csion/tasks/tLog"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 type Charset string
@@ -15,24 +17,27 @@ const (
 	GB18030 = Charset("GB18030")
 )
 
+var log = tLog.GetTLog()
+
 //执行shell脚本
 func ExecShell(cmd string, dir string, file *os.File) {
 	_, err := file.Write([]byte("[script]: " + cmd + " \n"))
-	if err != nil {
-		panic(err)
+	log.Panic2("日志写入异常", err)
+	log.Debug("执行脚本", cmd)
+
+	var command *exec.Cmd
+	if strings.Contains(os.Getenv("os"), "Windows"){
+		command = exec.Command("cmd", "/C", cmd)
+	} else {
+		command = exec.Command("/bin/sh", "-c", cmd)
 	}
-	command := exec.Command("cmd", "/C", cmd)
 	command.Dir = dir
 
-	pipe, err1 := command.StdoutPipe()
-	if err1 != nil {
-		panic(err1)
-	}
+	pipe, err := command.StdoutPipe()
+	checkErr("获取脚本执行结果异常", err, file)
 	defer pipe.Close()
 
-	if err2 := command.Start(); err2 != nil {
-		panic(err2)
-	}
+	checkErr("脚本执行异常", command.Start(), file)
 
 	reader := bufio.NewReader(pipe)
 	for {
@@ -40,12 +45,12 @@ func ExecShell(cmd string, dir string, file *os.File) {
 		if err == io.EOF {
 			return
 		} else if err != nil {
-			panic(err)
+			checkErr("脚本执行异常", err, file)
 		}
 
 		_, err = file.Write(append(line, ' ', '\n'))
 		if err != nil {
-			panic(err)
+			log.Panic2("日志写入异常", err)
 		}
 
 	}
@@ -72,7 +77,14 @@ func ExecShell(cmd string, dir string, file *os.File) {
 
 }
 
-
+// 异常校验，结果写入到执行日志和系统日志中
+func checkErr(s string, err error, logFile *os.File) {
+	if err != nil {
+		_, e := logFile.Write([]byte("【ERROR】 " + s + err.Error() + " \n"))
+		log.Panic2("日志写入异常", e)
+		log.Panic2(s, err)
+	}
+}
 
 func convertByte2String(byte []byte, charset Charset) string {
 	var str string

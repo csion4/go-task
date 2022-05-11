@@ -4,7 +4,7 @@ import (
 	_ "com.csion/tasks/common" // 初始化数据库链接
 	_ "com.csion/tasks/config" // 加载配置文件
 	"com.csion/tasks/tLog"
-	tLogAdapter "com.csion/tasks/tLogApapter"
+	tLogAdapter "com.csion/tasks/tLog/tLogApapter"
 	"com.csion/tasks/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -41,7 +41,7 @@ func main() {
 	// 指定gin的tlog适配
 	gin.DefaultWriter = &tLogAdapter.TLogGinAdapter{}
 	gin.DefaultErrorWriter = &tLogAdapter.TLogGinAdapter{}
-	// gin.SetMode() gin默认日志级别
+	// gin.SetMode() 调整gin默认日志级别
 
 	// 配置gin
 	r := gin.Default()

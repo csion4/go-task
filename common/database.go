@@ -3,7 +3,7 @@ package common
 import (
 	_ "com.csion/tasks/config" // 加载配置文件
 	"com.csion/tasks/tLog"
-	tLogAdapter "com.csion/tasks/tLogApapter"
+	tLogAdapter "com.csion/tasks/tLog/tLogApapter"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -29,7 +29,7 @@ func init(){
 	var err error
 	db, err = gorm.Open(mysql.Open(mysqlUrl),
 		&gorm.Config{Logger: logger.New(
-			&tLogAdapter.TLogGormAdapter{},						// 指定输出writer
+			&tLogAdapter.TLogGormAdapter{}, // 指定输出writer
 			logger.Config{										// 增加配置
 				SlowThreshold: 1 * time.Microsecond,			// 配置慢sql耗时标准，默认 200 * time.Millisecond
 				LogLevel:      LogLevel,						// 打开Warn级别的日志，其实如果我们不需要修改其他配置比如SlowThreshold可以直接设置当前输出日志级别Warn即可

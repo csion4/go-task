@@ -1,9 +1,12 @@
 package dto
 
-import "time"
+import (
+	"time"
+)
 
 type WorkerNode struct {
 	Id int
+	Name string
 	Ip string
 	Port int
 	UserName string
@@ -13,6 +16,4 @@ type WorkerNode struct {
 	UpdateTime time.Time `gorm:"default:null"`
 	CreateUser int
 	UpdateUser int	`gorm:"default:null"`
-
-
 }

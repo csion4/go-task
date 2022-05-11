@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/spf13/viper"
-	"log"
 	"net/http"
 )
 
@@ -28,14 +27,14 @@ func DoClusterTask(taskCode string, taskId int, recordId int) {
 	var stages []dto.TaskStages
 	find := db.Where("task_id = ? and status =1", taskId).Find(&stages)
 	if find.Error != nil {
-		log.Fatal(find.Error)
+		// log.Fatal(find.Error)
 	}
 
 	for _, stage := range stages {
 		var tasksEnv []dto.TaskEnvs
 		find := db.Where("stage_id = ? and status = 1", stage.Id).Find(&tasksEnv)
 		if find.Error != nil {
-			log.Fatal(find.Error)
+			// log.Fatal(find.Error)
 		}
 		m := make(map[int]map[string]string)
 		env := make(map[string]string, len(tasksEnv))
@@ -56,14 +55,14 @@ func DoClusterTask(taskCode string, taskId int, recordId int) {
 	client := &http.Client{}
 	request, err := http.NewRequest("POST", fmt.Sprintf("http://%s:%d/task", worker.Ip, worker.Port), bytes.NewBuffer(dataJson))
 	if err != nil {
-		log.Fatal(err)
+		// log.Fatal(err)
 	}
 	request.Header.Add("auth", viper.GetString("task.worker.Auth"))
 	request.Header.Add("Content-Type", "application/json")
 
 	re, err := client.Do(request)
 	if err != nil {
-		log.Fatal(err)
+		// log.Fatal(err)
 	}
 	defer re.Body.Close()
 

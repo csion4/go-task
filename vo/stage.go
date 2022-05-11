@@ -1,8 +1,8 @@
-package module
+package vo
 
 type LayoutTask struct {
-	Stages *[]Stage	`json:"stages"`
-	TaskId int	`json:"taskId"`
+	Stages []Stage	`json:"stages" binding:"required"`
+	TaskId int	`json:"taskId" binding:"required"`
 }
 
 type Stage struct {

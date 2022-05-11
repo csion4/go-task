@@ -2,14 +2,14 @@ package controller
 
 import (
 	"bufio"
-	"com.csion/tasks/cluster"
 	"com.csion/tasks/common"
 	"com.csion/tasks/dto"
 	"com.csion/tasks/response"
-	"com.csion/tasks/task"
+	"com.csion/tasks/vo"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
+	"gorm.io/gorm"
 	"io"
 	"net/http"
 	"os"
@@ -28,12 +28,6 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-
-// hello
-func Hello(c *gin.Context){
-	response.Success(c, nil, "hello")
-}
-
 // 添加任务
 func AddTask(c *gin.Context){
 	// 绑定参数
@@ -45,18 +39,17 @@ func AddTask(c *gin.Context){
 	db := common.GetDb()
 	if tasks.Id == 0 {
 		tasks.CreateTime = time.Now()
-		tasks.CreateUser = 1
+		tasks.CreateUser = c.GetInt("userId")
 		db = db.Create(&tasks)
 		r = "添加成功"
 	} else {
 		tasks.UpdateTime = time.Now()
-		tasks.UpdateUser = 1
+		tasks.UpdateUser = c.GetInt("userId")
 		db = db.Model(&tasks).Updates(&tasks)
 		r = "修改成功"
 	}
-	if db.Error != nil {
-		panic(db.Error)
-	}
+	log.Panic2("数据操作异常：", db.Error)
+
 	response.Success(c, gin.H{"data": tasks}, r)
 }
 
@@ -64,11 +57,7 @@ func AddTask(c *gin.Context){
 func DelTask(c *gin.Context){
 	taskId := c.Query("taskId")
 
-	db := common.GetDb()
-	result := db.Exec("update tasks set status = 0 where id = ?", taskId)
-	if result.Error != nil {
-		panic(result.Error)
-	}
+	log.Panic2("数据操作异常：", common.GetDb().Exec("update tasks set status = 0 where id = ?", taskId).Error)
 
 	response.Success(c, nil, "删除成功")
 }
@@ -79,131 +68,143 @@ func GetTasks(c *gin.Context){
 	pageSize, _ := strconv.Atoi(c.Query("pageSize"))
 
 	var tasks []dto.Tasks
-	db := common.GetDb()
 	var total int64
-	result := db.Model(&dto.Tasks{}).Where("status = ?", 1).Count(&total)
-	if result.Error != nil {
-		panic(result.Error)
-	}
-	result = db.Order("id desc").Limit(pageSize).Offset((page - 1) * pageSize).Where("status = ?", 1).Find(&tasks)
-	if result.Error != nil {
-		panic(result.Error)
-	}
+	log.Panic2("数据操作异常：", common.GetDb().Model(&dto.Tasks{}).Where("status = ?", 1).Count(&total).Error)
+	log.Panic2("数据操作异常：", common.GetDb().Order("id desc").Limit(pageSize).Offset((page - 1) * pageSize).Where("status = ?", 1).Find(&tasks).Error)
 
 	response.Success(c, gin.H{"data": tasks, "total": total}, "查询成功")
 }
 
+// 任务步骤编排
+func LayoutTask(c *gin.Context){
+	var stages vo.LayoutTask
+	log.Panic2("入参异常：", c.ShouldBind(&stages))
 
-// 构建任务
-func RunJob(c *gin.Context){
-	taskCode := c.Query("taskCode")
-
-	// 根据taskCode查找task信息
+	taskId := stages.TaskId
 	db := common.GetDb()
-	var taskDto dto.Tasks
-	find := db.Where("task_code = ? and status =1", taskCode).Find(&taskDto)
-	if find.Error != nil {
-		panic(find.Error)
+	// 校验正在执行的任务，不可以修改节点信息
+	var taskStatus int
+	db.Table("tasks").Select("task_status").Where("id = ?", taskId).Find(&taskStatus)
+	if taskStatus == 1 {
+		log.Panic1("该任务真在执行，请勿修改！")
 	}
 
-	// 通过判断task的状态判断是否需要初始化任务执行记录表
-	if taskDto.TaskStatus == 0 {
-		exec := db.Exec(`create table task_exec_recode_` + strconv.Itoa(taskDto.Id) + ` (
-    id int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
-	task_status tinyint(1) NOT NULL DEFAULT '1' COMMENT '任务执行状态：1：执行中，2：执行成功，3：执行失败',
-    create_time datetime DEFAULT NULL COMMENT '创建时间',
-    update_time datetime DEFAULT NULL COMMENT '更新时间',
-    PRIMARY KEY (id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COMMENT= '任务执行记录表'`)
-		if exec.Error != nil {
-			panic(exec.Error)
+	var taskEnvs []dto.TaskEnvs
+	_ = db.Transaction(func(tx *gorm.DB) error {
+		// 清除原来数据
+		tx.Exec("update task_stages set status = 0, update_time = now(), update_user = ? where task_id = ?", 1, taskId)
+
+		// 存表
+		for n, v := range stages.Stages {
+			var taskStage dto.TaskStages
+			taskStage.TaskId = taskId
+			taskStage.StageType = v.StageType
+			taskStage.OrderBy = n
+			taskStage.CreateTime = time.Now()
+			taskStage.UpdateTime = time.Now()
+			taskStage.CreateUser = c.GetInt("userId")
+			log.Panic2("数据操作异常：", tx.Create(&taskStage).Error)
+
+			for k, e := range v.Envs {
+				var env dto.TaskEnvs
+				env.TaskId = taskId
+				env.StageId = taskStage.Id
+				env.Param = k
+				env.Value = e
+				env.CreateTime = time.Now()
+				env.UpdateTime = time.Now()
+				env.CreateUser = c.GetInt("userId")
+				taskEnvs = append(taskEnvs, env)
+			}
 		}
-		exec = db.Exec(`create table task_exec_stage_result_` + strconv.Itoa(taskDto.Id) + ` (
-  id int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
-  record_id int(11) NOT NULL COMMENT '执行记录标识',
-  stage_type tinyint(1) NOT NULL COMMENT '节点类型',
-  stage_status tinyint(1) NOT NULL DEFAULT '1' COMMENT '节点执行状态：1：执行中，2：执行成功，3：执行失败',
-  create_time datetime DEFAULT NULL COMMENT '创建时间',
-  update_time datetime DEFAULT NULL COMMENT '更新时间',
-  PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='任务节点执行记录表'`)
-		if exec.Error != nil {
-			panic(exec.Error)
-		}
-	}
+		log.Panic2("数据操作异常：", tx.Create(&taskEnvs).Error)
+		return nil
+	})
 
-	// 更新任务状态
-	result := db.Exec("update tasks set task_status = 1 where task_code = ?", taskCode)
-	if result.Error != nil {
-		panic(result.Error)
-	}
-
-	// 向任务执行记录表中插入数据
-	db.Exec(`insert into task_exec_recode_` + strconv.Itoa(taskDto.Id) + ` (task_status, create_time) values 
-	(1, now())`)
-	var recordId int
-	db.Raw(`select id from task_exec_recode_` + strconv.Itoa(taskDto.Id) + ` where task_status = 1`).Scan(&recordId)
-
-	var stages []dto.TaskStages
-	find = db.Raw("select * from task_stages where task_id = ? and status =1", taskDto.Id).Scan(&stages)
-	if find.Error != nil {
-		panic(find.Error)
-	}
-	for _, stage := range stages {
-		db.Exec("insert into task_exec_stage_result_" + strconv.Itoa(taskDto.Id) + " (record_id, stage_type, stage_status) " +
-			"values (?, ? , 0)", recordId, stage.StageType)
-	}
-
-	// 异步构建任务
-	if clusterTask == "true" {
-		go cluster.DoClusterTask(taskCode, taskDto.Id, recordId)
-	} else {
-		go task.RunTask(taskCode, taskDto.Id, recordId)
-	}
-
-	response.Success(c, gin.H{"recordId": recordId}, "任务发起成功")
+	response.Success(c, nil, "保存成功")
 }
+
+
+// 获取任务节点信息
+func TaskLayoutInfo(c *gin.Context){
+	taskId := c.Query("taskId")
+
+	db := common.GetDb()
+	var layoutInfo []vo.LayoutInfo
+	log.Panic2("数据操作异常：", db.Raw(`select a.id, a.task_id, a.stage_type, a.order_by , b.param , b.value  from task_stages a, task_envs b
+where a.task_id = ? and a.status = 1 and a.id = b.stage_id and b.status = 1 order by a.order_by asc `, taskId).Scan(&layoutInfo).Error)
+
+	var temp = -1
+	var stages []vo.Stage
+	var stage vo.Stage
+	var envs map[string]string
+	for _, info := range layoutInfo {
+		if temp != info.OrderBy {
+			if temp != -1 {stages = append(stages, stage)}
+			envs = make(map[string]string, 10)
+			stageName := getStageName(info.StageType)
+			stage = vo.Stage{
+				StageType: info.StageType,
+				StageName: stageName,
+				Envs: envs,
+			}
+			temp = info.OrderBy
+		}
+		envs[info.Param] = info.Value
+	}
+	stages = append(stages, stage)
+
+	response.Success(c, gin.H{"data": stages}, "查询成功")
+}
+
+func getStageName(StageStatus int) string {
+	switch StageStatus {
+	case 1:
+		return "更新Git仓库代码"
+	case 2:
+		return "脚本执行"
+	case 3:
+		return "Http/Https服务调用"
+	case 4:
+		return "远程ssh访问"
+	default:
+		return "未知步骤"
+	}
+}
+
+
 
 func GetTaskLogForWS(c *gin.Context) {
 	recordId := c.Query("recordId")
 	taskCode := c.Query("taskCode")
 	taskId := c.Query("id")
 
-	time.Sleep(1e9)	// wait job start
+	time.Sleep(2e9)	// wait job start
 
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("WS获取执行日志异常：", err)
 	defer ws.Close()
 
 	reader, file := logFromFile(viper.GetString("taskLog") + taskCode + "/" + taskCode + "_" + recordId + ".log")
 	defer file.Close()
 
-	// buf := make([]byte, 64)
 	db := common.GetDb()
 	var taskStatus int
 	for  {
 		line, _, err := reader.ReadLine()
-		// n, err := reader.Read(buf)
 		if err == io.EOF {
 			db.Raw("select task_status from task_exec_recode_" + taskId + " where id = ?", recordId).Scan(&taskStatus)
 			if taskStatus != 1 {
 				break
 			}
 			time.Sleep(1e9)
-			//ws.Close()
-			//fmt.Println("文件读完了")
-			//break
 		}
 		if err != nil {
-			//log.Println(err)
+			log.Panic2("WS获取执行日志异常：", err)
 		}
 		if err == nil {
 			err = ws.WriteMessage(websocket.TextMessage, line)
-			if err != nil {
-				panic(err)
-			}
+			log.Panic2("WS获取执行日志异常：", err)
 			time.Sleep(1e8)
 		}
 	}
@@ -223,7 +224,7 @@ func GetTaskLog(c *gin.Context) {
 			break
 		}
 		if err != nil {
-			panic(err)
+			log.Panic2("获取执行日志异常：", err)
 		}
 		buf = append(buf, line...)
 		buf = append(buf, []byte(LF)...)
@@ -235,9 +236,8 @@ func GetTaskLog(c *gin.Context) {
 func logFromFile (filePath string) (*bufio.Reader, *os.File) {
 	file, err := os.OpenFile(filePath, os.O_RDONLY, 0666)
 	if err != nil {
-		panic("没找到对应任务的历史记录，可能已清理！")
+		log.Panic1("没找到对应任务的历史记录，可能已清理！")
 	}
-
 	return bufio.NewReader(file), file
 }
 

@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"com.csion/tasks/tLog"
 	"fmt"
 	"github.com/pkg/sftp"
 	"github.com/spf13/viper"
@@ -11,6 +12,7 @@ import (
 )
 
 const worker = "taskCluster"
+var log = tLog.GetTLog()
 
 func Track(ip string, userName string, password string) string  {
 	// 发送worker client
@@ -19,9 +21,7 @@ func Track(ip string, userName string, password string) string  {
 		Auth:            []ssh.AuthMethod{ssh.Password(password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	})
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("节点连接异常", err)
 	defer sshClient.Close()
 
 	var targetPath string
@@ -35,9 +35,7 @@ func Track(ip string, userName string, password string) string  {
 
 	// 启动服务
 	session, err := sshClient.NewSession()
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("节点连接异常", err)
 	defer session.Close()
 
 	if err := session.Run("chmod 777 taskCluster && ./taskCluster"); err != nil {
@@ -49,9 +47,7 @@ func Track(ip string, userName string, password string) string  {
 
 func sendTaskCluster(sshClient *ssh.Client, targetPath string) {
 	sftpClient, err := sftp.NewClient(sshClient)
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("节点连接异常", err)
 	defer sftpClient.Close()
 
 	// 发送客户端包
@@ -59,27 +55,19 @@ func sendTaskCluster(sshClient *ssh.Client, targetPath string) {
 	src, _ := os.Open(wd + "/cluster/" + worker)
 	defer src.Close()
 	dst, err := sftpClient.OpenFile(targetPath + "/" + worker, os.O_CREATE|os.O_RDWR)
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("节点连接异常", err)
 	defer dst.Close()
 	_, err = io.Copy(dst, src)
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("节点连接异常", err)
 
 	// 发送配置文件
 	dst, err = sftpClient.OpenFile(targetPath + "/" + worker + ".conf", os.O_CREATE|os.O_RDWR)
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("节点连接异常", err)
 	defer dst.Close()
 	_, err = dst.Write([]byte("MNode=" + viper.GetString("task.worker.MNode") +
 		"\nTaskHome=" + viper.GetString("task.worker.TaskHome") +
 		"\nAuth=" + viper.GetString("task.worker.Auth")))
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("节点连接异常", err)
 }
 
 func getPort(sshClient *ssh.Client, targetPath string) string  {
