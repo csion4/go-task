@@ -2,6 +2,7 @@ package task
 
 import (
 	"com.csion/tasks/common"
+	"com.csion/tasks/config"
 	"com.csion/tasks/dto"
 	"com.csion/tasks/tLog"
 	"com.csion/tasks/utils"
@@ -13,12 +14,12 @@ import (
 var chanMap = make(map[string]chan int) // >1:表示各个节点，0：全部完成，-1：当前节点异常了
 var log = tLog.GetTLog()
 
-// 构建任务
-func RunTask(taskCode string, taskId int, recordId int){
+// 构建master节点任务
+func RunTask(taskCode string, taskId int, recordId int, logFile *os.File){
 	var stage []dto.TaskStages
 	db := common.GetDb()
 	log.Debug("任务开始构建，任务编号：", taskCode)
-
+	// todo: 这里任务状态需要事务，保证数据一致性，因为时分库分表，所以不用担心锁表和效率问题
 	// 兜底修改任务状态为异常
 	defer func() {
 		r := recover()
@@ -40,16 +41,16 @@ func RunTask(taskCode string, taskId int, recordId int){
 
 	// ----- before task -----
 	// 创建并获取日志文件
-	taskLogDir := viper.GetString("taskLog") + taskCode + "/"
-	log.Panic2("任务执行目录创建异常，任务编号：" + taskCode + " ", utils.CreateDir(taskLogDir, 0666))
+	if logFile == nil {
+		logFile = createLog(taskCode, recordId)
+		defer logFile.Close()
+	}
 
-	logFile, err := os.OpenFile(taskLogDir + taskCode + "_" + strconv.Itoa(recordId) + ".log", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
-	log.Panic2("任务日志文件创建异常，任务编号：" + taskCode + " ", err)
-	defer logFile.Close()
 
 	// 初始化目录
-	checkErr("初始化工作目录异常", taskCode, utils.CreateDir(viper.GetString("taskWorkspace") + taskCode, 0666), logFile)
-	checkErr("初始化工作脚本执行目录异常", taskCode, utils.CreateDir(viper.GetString("taskWorkspace") + taskCode + "@script", 0666), logFile)
+	workDir, scriptDir := config.GetWorkDirPath(taskCode)
+	checkErr("初始化工作目录异常", taskCode, utils.CreateDir(workDir, 0666), logFile)
+	checkErr("初始化工作脚本执行目录异常", taskCode, utils.CreateDir(scriptDir, 0666), logFile)
 
 	// ----- do stage -----
 	for n, value := range stage {
@@ -58,14 +59,14 @@ func RunTask(taskCode string, taskId int, recordId int){
 		checkErr("获取任务节点异常", taskCode, err, logFile)
 		switch value.StageType {
 		case 1:
-			if _, e := logFile.Write([]byte("----【start stage clone git project】---- \n")); e != nil {
+			if _, e := logFile.Write([]byte("\n----【start stage clone git project】---- \n")); e != nil {
 				log.Panic2("日志写入异常，任务编号：" + taskCode, e)
 			}
 			log.Debug("----【start stage clone git project】----，任务编号：", taskCode)
 			Git(env["gitUrl"], env["branch"], viper.GetString("taskWorkspace") + taskCode, logFile)
 			break
 		case 2:
-			if _, e := logFile.Write([]byte("----【start stage exec script】---- \n")); e != nil {
+			if _, e := logFile.Write([]byte("\n----【start stage exec script】---- \n")); e != nil {
 				log.Panic2("日志写入异常，任务编号：" + taskCode, e)
 			}
 			log.Debug("----【start stage exec script】----，任务编号：", taskCode)
@@ -127,6 +128,12 @@ func checkErr(s string, taskCode string, err error, logFile *os.File) {
 	}
 }
 
+// 通过一个公共的通道响应执行状态变更
+func GetTaskStageChan(taskId string, recordId string) chan int {
+	ch := make(chan int)
+	chanMap[taskId + recordId] = ch  // 暂时不用缓冲，缓冲可以避免某些异常，但是可能导致gc失败，暂时不用缓冲
+	return ch
+}
 func RemoveChan(taskId string, recordId string) {
 	ch := chanMap[taskId+recordId]
 	delete(chanMap, taskId+recordId) // 清除chanMap

@@ -1,7 +1,6 @@
 package common
 
 import (
-	"com.csion/tasks/dto"
 	"github.com/golang-jwt/jwt"
 	"time"
 )
@@ -13,10 +12,10 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
-func ReleaseToken(user dto.Users) (string, error) {
+func ReleaseToken(userId int) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &Claims{
-		UserId: user.Id,
+		UserId: userId,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
 			IssuedAt:  time.Now().Unix(),

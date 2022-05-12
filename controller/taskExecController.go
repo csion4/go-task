@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"com.csion/tasks/cluster"
 	"com.csion/tasks/common"
 	"com.csion/tasks/dto"
 	"com.csion/tasks/response"
@@ -74,10 +73,10 @@ func RunJob(c *gin.Context){
 		// 异步构建任务
 		if clusterTask == "true" {
 			log.Debug("集群模式任务执行，任务编号：", taskCode)
-			go cluster.DoClusterTask(taskCode, taskDto.Id, recordId)
+			go task.PublishTask(taskCode, taskDto.Id, recordId)
 		} else {
 			log.Debug("单机模式任务执行，任务编号：", taskCode)
-			go task.RunTask(taskCode, taskDto.Id, recordId)
+			go task.RunTask(taskCode, taskDto.Id, recordId, nil)
 		}
 		
 		return nil

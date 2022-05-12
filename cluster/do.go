@@ -9,33 +9,23 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	"net/http"
+	"os"
 )
 
-func DoClusterTask(taskCode string, taskId int, recordId int) {
+func DoClusterTask(taskCode string, taskId int, recordId int, worker dto.WorkerNode, logFile *os.File) {
 	// 选择worker node
 	db := common.GetDb()
-	var worker dto.WorkerNode
-	r := db.First(&worker)	// 具体节点选取规则再定
-	if r.Error != nil {
-		panic(r.Error)
-	}
 
 	// 封装任务信息
 	var taskVO vo.DoClusterTaskVO
 	var data []map[int]map[string]string
 
 	var stages []dto.TaskStages
-	find := db.Where("task_id = ? and status =1", taskId).Find(&stages)
-	if find.Error != nil {
-		// log.Fatal(find.Error)
-	}
+	checkErr("数据操作异常", taskCode, db.Where("task_id = ? and status =1", taskId).Find(&stages).Error, logFile)
 
 	for _, stage := range stages {
 		var tasksEnv []dto.TaskEnvs
-		find := db.Where("stage_id = ? and status = 1", stage.Id).Find(&tasksEnv)
-		if find.Error != nil {
-			// log.Fatal(find.Error)
-		}
+		checkErr("数据操作异常", taskCode, db.Where("stage_id = ? and status = 1", stage.Id).Find(&tasksEnv).Error, logFile)
 		m := make(map[int]map[string]string)
 		env := make(map[string]string, len(tasksEnv))
 		for _, v := range tasksEnv {
@@ -54,16 +44,21 @@ func DoClusterTask(taskCode string, taskId int, recordId int) {
 	// 发送任务
 	client := &http.Client{}
 	request, err := http.NewRequest("POST", fmt.Sprintf("http://%s:%d/task", worker.Ip, worker.Port), bytes.NewBuffer(dataJson))
-	if err != nil {
-		// log.Fatal(err)
-	}
+	checkErr("工作节点任务发起异常", taskCode, err, logFile)
 	request.Header.Add("auth", viper.GetString("task.worker.Auth"))
 	request.Header.Add("Content-Type", "application/json")
 
 	re, err := client.Do(request)
-	if err != nil {
-		// log.Fatal(err)
-	}
+	checkErr("工作节点任务发起异常", taskCode, err, logFile)
 	defer re.Body.Close()
 
+}
+
+// 异常校验，结果写入到执行日志和系统日志中
+func checkErr(s string, taskCode string, err error, logFile *os.File) {
+	if err != nil {
+		_, e := logFile.Write([]byte("【ERROR】 " + s + err.Error() + " \n"))
+		log.Panic2("日志写入异常， 任务编号：" + taskCode, e)
+		log.Panic2(s + ", 任务编号：" + taskCode, err)
+	}
 }

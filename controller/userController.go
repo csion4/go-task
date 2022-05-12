@@ -70,7 +70,7 @@ func Login(c *gin.Context){
 	log.Panic2("用户名密码错误", bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(login.Password)))
 
 	// 密码正确发放token给前端
-	token,errToken := common.ReleaseToken(user)
+	token,errToken := common.ReleaseToken(user.Id)
 	if errToken != nil{
 		log.Panic2("生成token失败：", errToken)
 	}

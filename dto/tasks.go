@@ -1,6 +1,8 @@
 package dto
 
-import "time"
+import (
+	"time"
+)
 
 type Tasks struct {
 	Id int			`json:"id"`

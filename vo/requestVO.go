@@ -15,7 +15,10 @@ type LoginReq struct {
 }
 
 type AddWorkerReq struct {
+	Name string `json:"name" binding:"required"`
 	Ip string `json:"ip" binding:"required"`
 	UserName string `json:"userName" binding:"required"`
 	Password string `json:"password" binding:"required"`
+	Strategy int `json:"strategy" binding:"required"`
+	TaskHome string `json:"taskHome" binding:"required"`
 }

@@ -16,6 +16,7 @@ var db *gorm.DB
 var log = tLog.GetTLog()
 // 初始化数据库连接
 func init(){
+	log.Debug("开启建立数据库连接...")
 	mysqlUrl := viper.GetString("mysql.dsn")
 	printSql := viper.GetString("gorm.printSql")
 
@@ -37,6 +38,7 @@ func init(){
 	})
 
 	log.Panic2("GORM初始化异常：", err)
+	log.Debug("数据库连接完成！")
 }
 
 func GetDb() *gorm.DB {

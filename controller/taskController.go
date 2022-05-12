@@ -3,6 +3,7 @@ package controller
 import (
 	"bufio"
 	"com.csion/tasks/common"
+	"com.csion/tasks/config"
 	"com.csion/tasks/dto"
 	"com.csion/tasks/response"
 	"com.csion/tasks/vo"
@@ -185,7 +186,8 @@ func GetTaskLogForWS(c *gin.Context) {
 	log.Panic2("WS获取执行日志异常：", err)
 	defer ws.Close()
 
-	reader, file := logFromFile(viper.GetString("taskLog") + taskCode + "/" + taskCode + "_" + recordId + ".log")
+	_, logFilePath := config.GetLogFilePath(taskCode, recordId)
+	reader, file := logFromFile(logFilePath)
 	defer file.Close()
 
 	db := common.GetDb()
@@ -215,7 +217,8 @@ func GetTaskLog(c *gin.Context) {
 	taskCode := c.Query("taskCode")
 	LF := c.DefaultQuery("linefeed", "\n")
 
-	reader, file := logFromFile(viper.GetString("taskLog") + taskCode + "/" + taskCode + "_" + recordId + ".log")
+	_, logFilePath := config.GetLogFilePath(taskCode, recordId)
+	reader, file := logFromFile(logFilePath)
 	defer file.Close()
 	var buf []byte
 	for {
