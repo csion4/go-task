@@ -22,7 +22,7 @@ func AddWorker(c *gin.Context) {
 	log.Panic2("入参异常", c.ShouldBind(&worker))
 
 	// 埋点
-	port, _ := strconv.Atoi(cluster.Track(worker.Ip, worker.UserName, worker.Password))
+	port, _ := strconv.Atoi(cluster.Track(worker.Ip, worker.UserName, worker.Password, worker.TaskHome))
 
 	// 保存host信息
 	db := common.GetDb()
@@ -41,7 +41,7 @@ func AddWorker(c *gin.Context) {
 		CreateUser: c.GetInt("userId")}
 	log.Panic2("数据操作异常", db.Create(&workerNode).Error)
 
-	cluster.NodeProbe(workerNode.Id, workerNode.Ip, workerNode.Port)
+	cluster.NodeProbe(workerNode.Id)
 
 	response.Success(c, nil, "节点添加成功")
 }
@@ -86,5 +86,10 @@ func ClusterResp(c *gin.Context)  {
 		_, err = logFile.Write(b)
 		log.Panic2("工作节点日志会写异常", err)
 	}
+}
+
+// 响应node节点的监听
+func ClusterPing(c *gin.Context)  {
+	response.Success(c, gin.H{"data": "Pong"}, "Pong")
 }
 

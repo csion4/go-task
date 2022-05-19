@@ -24,7 +24,7 @@ var log = tLog.GetTLog()
 // @BasePath /
 func main() {
 	// 初始化环境
-	// initEnv()
+	initEnv()
 
 	// 指定gin的tlog适配
 	gin.DefaultWriter = &tLogAdapter.TLogGinAdapter{}

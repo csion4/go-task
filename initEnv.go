@@ -31,13 +31,13 @@ func initEnv() {
 	// 清理节点任务数
 	db.Exec("update worker_nodes set task_num = 0 where status = 1")
 
-	// 初始化worker节点
+	// 初始化worker节点，todo：这里可以做成异步的
 	var wn dto.WorkerNode
 	all := wn.FindAll()
 	var flag bool
 	for _, node := range all {
 		if node.Type == 1 {
-			port := checkNode(node.Ip, node.UserName, node.Password)
+			port := cluster.CheckNode(node.Ip, node.UserName, node.Password, node.TaskHome)
 			if port == "" && node.NodeStatus == 1 {
 				db.Exec("update worker_nodes set node_status = 2 where id = ?", node.Id)
 			} else if port != ""{
@@ -45,8 +45,11 @@ func initEnv() {
 				if p != node.Port {
 					db.Exec("update worker_nodes set port = ? where id = ?", p, node.Id)
 				}
+				if node.NodeStatus != 1{
+					db.Exec("update worker_nodes set node_status = 1 where id = ?", node.Id)
+				}
 			}
-			cluster.NodeProbe(node.Id, node.Ip, node.Port)
+			cluster.NodeProbe(node.Id)
 		} else {
 			flag = true
 		}
@@ -71,13 +74,4 @@ func initEnv() {
 	}
 
 	log.Debug("环境初始化完成！")
-}
-
-func checkNode(ip string, userName string, password string) string {
-	defer func() {
-		if err := recover();err != nil {
-			return
-		}
-	}()
-	return cluster.Track(ip, userName, password)
 }

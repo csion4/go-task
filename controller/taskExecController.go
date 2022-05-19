@@ -20,11 +20,11 @@ func RunJob(c *gin.Context){
 	var taskDto dto.Tasks
 	log.Panic2("数据操作异常：", db.Where("task_code = ? and status =1", taskCode).Find(&taskDto).Error)
 
-	// 校验是否有可执行节点
+	// todo: 校验是否有可执行节点
 
 	// 校验是否已经编排任务
 	var n int64
-	log.Panic2("数据操作异常：", common.GetDb().Where("task_id = ? and status = 1", taskDto.Id).Count(&n).Error)
+	log.Panic2("数据操作异常：", common.GetDb().Model(&dto.TaskStages{}).Where("task_id = ? and status = 1", taskDto.Id).Count(&n).Error)
 	if n == 0 {
 		log.Panic1("该任务未编排任务节点信息，请先添加后再执行")
 	}
@@ -71,13 +71,8 @@ func RunJob(c *gin.Context){
 		}
 
 		// 异步构建任务
-		if clusterTask == "true" {
-			log.Debug("集群模式任务执行，任务编号：", taskCode)
-			go task.PublishTask(taskCode, taskDto.Id, recordId)
-		} else {
-			log.Debug("单机模式任务执行，任务编号：", taskCode)
-			go task.RunTask(taskCode, taskDto.Id, recordId, nil)
-		}
+		log.Debug("开启异步执行任务，任务编号：", taskCode)
+		go task.PublishTask(taskCode, taskDto.Id, recordId)
 		
 		return nil
 	})

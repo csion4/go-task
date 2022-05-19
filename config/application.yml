@@ -9,8 +9,6 @@ gorm:
 
 task:
   home: D:\csion.project\Go\code\taskHome\
-  cluster: true        # 开启集群模式
   worker:
     MNode: 192.168.13.1:9044
-    TaskHome: /data/taskHome/
     Auth: 6b715129f1a3449ebad0ec0ef0ab1bc

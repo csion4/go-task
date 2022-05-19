@@ -16,9 +16,7 @@ func CreateTempShell(scriptDir string, scripts string, file *os.File) string {
 	}
 
 	file, err := os.Create(scriptDir + tempFile)
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("创建临时shell脚本异常", err)
 	defer file.Close()
 
 	_, _ = file.WriteString(scripts)
@@ -28,7 +26,5 @@ func CreateTempShell(scriptDir string, scripts string, file *os.File) string {
 }
 func DelFile(file string){
 	err := os.Remove(file)
-	if err != nil {
-		panic(err)
-	}
+	log.Panic2("删除临时shell脚本异常", err)
 }

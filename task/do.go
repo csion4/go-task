@@ -19,25 +19,9 @@ func RunTask(taskCode string, taskId int, recordId int, logFile *os.File){
 	var stage []dto.TaskStages
 	db := common.GetDb()
 	log.Debug("任务开始构建，任务编号：", taskCode)
-	// todo: 这里任务状态需要事务，保证数据一致性，因为时分库分表，所以不用担心锁表和效率问题
-	// 兜底修改任务状态为异常
-	defer func() {
-		r := recover()
-		if r != nil {
-			r := db.Exec("update tasks set task_status = 3 where task_code = ?", taskCode)
-			if r.Error != nil {
-				log.Error("任务<", taskCode, ">回退数据库执行异常", r.Error)
-			}
-			r2 := db.Exec(`update task_exec_recode_` + strconv.Itoa(taskId) + ` set task_status = 3, update_time = now() where task_status = 1`)
-			if r2.Error != nil {
-				log.Error("任务<", taskCode, ">回退数据库执行异常", r.Error)
-			}
-			log.Error("任务构建异常，设置执行状态失败，任务编号：", taskCode)
-		}
-	}()
 
 	// 查询任务节点
-	log.Panic2("任务节点查询异常，任务编号：" + taskCode + " ", db.Where("task_id = ? and status =1", taskId).Scan(&stage).Error)
+	log.Panic2("任务节点查询异常，任务编号：" + taskCode + " ", db.Where("task_id = ? and status =1", taskId).Find(&stage).Error)
 
 	// ----- before task -----
 	// 创建并获取日志文件

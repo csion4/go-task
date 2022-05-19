@@ -26,8 +26,8 @@ type WorkerNode struct {
 	UpdateUser int	`gorm:"default:null"`
 }
 
-func (wn *WorkerNode) FindByTaskNumAsc() (r WorkerNode) {
-	log.Panic2("数据操作异常", common.GetDb().Where("status = 1 order by task_num asc").First(&r).Error)
+func (wn *WorkerNode) SelectNode() (r WorkerNode) {
+	log.Panic2("数据操作异常", common.GetDb().Where("status = 1 ans node_status = 1 and strategy = 0 order by task_num asc limit 1").Find(&r).Error)
 	return
 }
 

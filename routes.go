@@ -48,7 +48,9 @@ func Route(r *gin.Engine) *gin.Engine {
 	cluster.POST("/addWorker", controller.AddWorker)
 	cluster.GET("/getWorker", controller.GetWorker)
 
-	r.GET("/ws/clusterResp", middleware.WorkerAuthMiddleware(), controller.ClusterResp)	// worker节点日志回写
+	node := r.Group("/node")
+	node.GET("/ws/clusterResp", middleware.WorkerAuthMiddleware(), controller.ClusterResp)	// worker节点日志回写
+	node.GET("/ping", controller.ClusterPing)	// worker节点监听
 
 	return r
 }

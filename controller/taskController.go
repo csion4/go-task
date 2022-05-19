@@ -9,7 +9,6 @@ import (
 	"com.csion/tasks/vo"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/spf13/viper"
 	"gorm.io/gorm"
 	"io"
 	"net/http"
@@ -17,8 +16,6 @@ import (
 	"strconv"
 	"time"
 )
-
-var clusterTask = viper.GetString("task.cluster")
 
 // 配置webSocket参数
 var upgrader = websocket.Upgrader{
@@ -194,21 +191,22 @@ func GetTaskLogForWS(c *gin.Context) {
 	var taskStatus int
 	for  {
 		line, _, err := reader.ReadLine()
-		if err == io.EOF {
-			db.Raw("select task_status from task_exec_recode_" + taskId + " where id = ?", recordId).Scan(&taskStatus)
-			if taskStatus != 1 {
-				break
-			}
-			time.Sleep(1e9)
-		}
-		if err != nil {
-			log.Panic2("WS获取执行日志异常：", err)
-		}
 		if err == nil {
 			err = ws.WriteMessage(websocket.TextMessage, line)
 			log.Panic2("WS获取执行日志异常：", err)
 			time.Sleep(1e8)
+		} else {
+			if err == io.EOF {
+				db.Raw("select task_status from task_exec_recode_" + taskId + " where id = ?", recordId).Scan(&taskStatus)
+				if taskStatus != 1 {
+					break
+				}
+				time.Sleep(1e9)
+			} else {
+				log.Panic2("WS获取执行日志异常：", err)
+			}
 		}
+
 	}
 }
 

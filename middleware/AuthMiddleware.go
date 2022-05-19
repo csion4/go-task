@@ -18,7 +18,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// validate token formate
 		if tokenString =="" || !strings.HasPrefix(tokenString,"Bearer ") {
 			ctx.JSON(http.StatusUnauthorized, gin.H{
-				"code":401	,
+				"code":401,
 				"msg":"用户未登录",
 			})
 			ctx.Abort()
@@ -30,7 +30,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		token,claims,err := common.ParseToken(tokenString)
 		if err != nil || !token.Valid {
 			ctx.JSON(http.StatusUnauthorized, gin.H{
-				"code":401	,
+				"code":401,
 				"msg":"用户未登录",
 			})
 			ctx.Abort()
@@ -46,7 +46,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		//用户是否存在
 		if user.Id == 0 {
 			ctx.JSON(http.StatusUnauthorized, gin.H{
-				"code":401	,
+				"code":401,
 				"msg":"用户未登录",
 			})
 			ctx.Abort()
@@ -62,6 +62,10 @@ func WorkerAuthMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		auth := ctx.GetHeader("auth")
 		if auth != viper.GetString("task.worker.Auth") {
+			ctx.JSON(http.StatusUnauthorized, gin.H{
+				"code":401,
+				"msg":"验证失败",
+			})
 			ctx.Abort()
 			return
 		}
