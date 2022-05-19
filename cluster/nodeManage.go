@@ -44,7 +44,7 @@ func Track(ip string, userName string, password string, taskHome string) string 
 	log.Panic2("节点连接异常", err)
 	defer session.Close()
 
-	if err := session.Start("./taskCluster"); err != nil {
+	if err := session.Start("chmod 777 taskCluster && ./taskCluster"); err != nil {
 		log.Panic2("worker节点服务启动异常", err)
 	}
 

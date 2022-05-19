@@ -1,20 +1,25 @@
 package controller
 
 import (
-	"bytes"
 	"com.csion/tasks/cluster"
 	"com.csion/tasks/common"
 	"com.csion/tasks/config"
 	"com.csion/tasks/dto"
 	"com.csion/tasks/response"
+	"com.csion/tasks/task"
 	"com.csion/tasks/vo"
 	"github.com/gin-gonic/gin"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
-var OverFlag = []byte("Over!")
+const FailedFlag = "Failed"
+const SuccessFlag = "Success"
+const StageFlag = "StageFlag"
+const StageBefore = "Before"
+const StageAfter = "After"
 
 // 添加工作节点
 func AddWorker(c *gin.Context) {
@@ -62,7 +67,6 @@ func GetWorker(c *gin.Context) {
 
 
 
-
 // master与worker建立ws连接获取响应
 func ClusterResp(c *gin.Context)  {
 	taskCode := c.Query("taskCode")
@@ -77,15 +81,55 @@ func ClusterResp(c *gin.Context)  {
 	log.Panic2("工作节点日志会写异常", err)
 	defer ws.Close()
 
+	var t dto.Tasks
+	taskId := t.FindIdFromTaskCode(taskCode)
+
 	for {
 		_, b, err := ws.ReadMessage()
 		log.Panic2("工作节点日志会写异常", err)
-		if bytes.Equal(b, OverFlag)  {
-			return
+		if strings.HasPrefix(string(b), StageFlag) {
+			ri, _ := strconv.Atoi(recordId)
+			dealStage(string(b), taskId, ri)
+		} else {
+			if string(b) == SuccessFlag  {
+				ri, _ := strconv.Atoi(recordId)
+				taskSuccess(taskId, ri, taskCode)
+				return
+			}
+			if string(b) == FailedFlag {
+				taskFailed()
+				return
+			}
+			_, err = logFile.Write(b)
+			log.Panic2("工作节点日志会写异常", err)
 		}
-		_, err = logFile.Write(b)
-		log.Panic2("工作节点日志会写异常", err)
 	}
+}
+
+func dealStage(stageInfo string, taskId int, recordId int) {
+	s := strings.Split(stageInfo, "-")
+	stageType, _ := strconv.Atoi(s[2])
+	if s[1] == StageBefore {
+		err := task.BeforeState(taskId, recordId, stageType)
+		if err != nil {
+			log.Error(err)
+		}
+	} else if s[1] == StageAfter {
+		n, _ := strconv.Atoi(s[3])
+		err := task.AfterState(taskId, recordId, stageType, 2, n)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+}
+
+func taskSuccess(taskId int, recordId int, taskCode string) {
+	_ = task.Success(taskId, recordId, taskCode)
+}
+
+// todo:====
+func taskFailed() {
+
 }
 
 // 响应node节点的监听

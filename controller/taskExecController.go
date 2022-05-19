@@ -39,6 +39,7 @@ func RunJob(c *gin.Context){
 			log.Panic2("数据操作异常：", db.Exec(`create table task_exec_recode_`+strconv.Itoa(taskDto.Id)+` (
     id int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
 	task_status tinyint(1) NOT NULL DEFAULT '1' COMMENT '任务执行状态：1：执行中，2：执行成功，3：执行失败',
+	node_id int DEFAULT NULL COMMENT '执行节点id',
     create_time datetime DEFAULT NULL COMMENT '创建时间',
     update_time datetime DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id)
@@ -127,7 +128,7 @@ func getStageStatus(stageType int) string {
 	}
 }
 
-// ws更新正在执行的任务状态
+// ws更新正在执行的任务状态	todo: 这里应该有问题，在重复打开任务执行结果界面是重复创建ws连接时会出现的问题，应该可以在这里直接查询数据库获取结果后再次等待ch中的结果，确保重复打开界面时的数据更新问题
 func UpdateTaskRecord(c *gin.Context)  {
 	recordId := c.Query("recordId")
 	taskId := c.Query("taskId")

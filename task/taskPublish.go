@@ -30,10 +30,12 @@ func PublishTask(taskCode string, taskId int, recordId int) {
 				log.Error("任务<", taskCode, ">回退数据库执行异常", r.Error)
 			}
 			log.Error("任务构建异常，设置执行状态失败，任务编号：", taskCode)
+			finishNode(taskId, recordId)
 		}
 	}()
 
 	node := selectNode()
+	db.Exec("update task_exec_recode_" + strconv.Itoa(taskId) + " set node_id = ? where id = ?", node.Id, recordId)
 	logFile := createLog(taskCode, recordId)
 	defer logFile.Close()
 	_, err := logFile.Write([]byte("---- 【select node】 ---- \n【node】此次编译节点：" + node.Name + "\n" ))
@@ -51,6 +53,15 @@ func selectNode() (wn dto.WorkerNode) {
 	defer lock.Unlock()
 	wn = wn.SelectNode()
 	wn.TaskNumAdd(wn.Id)
+	return
+}
+
+// 选择节点
+func finishNode(taskId int, recordId int){
+	lock.Lock()
+	defer lock.Unlock()
+	var wn dto.WorkerNode
+	wn.TaskNumDec(strconv.Itoa(taskId), recordId)
 	return
 }
 

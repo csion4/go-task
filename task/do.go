@@ -38,7 +38,7 @@ func RunTask(taskCode string, taskId int, recordId int, logFile *os.File){
 
 	// ----- do stage -----
 	for n, value := range stage {
-		checkErr("任务节点状态更新异常", taskCode, beforeState(taskId, recordId, value.StageType), logFile)
+		checkErr("任务节点状态更新异常", taskCode, BeforeState(taskId, recordId, value.StageType), logFile)
 		env, err := getEnv(value.Id)
 		checkErr("获取任务节点异常", taskCode, err, logFile)
 		switch value.StageType {
@@ -60,32 +60,45 @@ func RunTask(taskCode string, taskId int, recordId int, logFile *os.File){
 			// HttpInvoke()
 			break
 		}
-		checkErr("任务节点状态更新异常", taskCode, afterState(taskId, recordId, value.StageType, 2, n), logFile)
-	}
-	// 0 表示全部完全
-	if ch := chanMap[strconv.Itoa(taskId) + strconv.Itoa(recordId)]; ch != nil {
-		ch <- 0
+		checkErr("任务节点状态更新异常", taskCode, AfterState(taskId, recordId, value.StageType, 2, n), logFile)
 	}
 
-	checkErr("任务节点状态更新异常", taskCode, db.Exec("update tasks set task_status = 2 where task_code = ?", taskCode).Error, logFile)
-	checkErr("任务节点状态更新异常", taskCode, db.Exec("update task_exec_recode_" + strconv.Itoa(taskId) + " set task_status = 2, update_time = now() where task_status = 1").Error, logFile)
+	checkErr("任务节点状态更新异常", taskCode, Success(taskId, recordId, taskCode), logFile)
 }
 
 // 开始stage执行之前
-func beforeState(taskId int, recordId int, stageType int) error {
+func BeforeState(taskId int, recordId int, stageType int) error {
 	// 更新状态
 	db := common.GetDb()
-	return db.Exec("update task_exec_stage_result_"+strconv.Itoa(taskId)+" set stage_status = 1, create_time = now() "+
+	return db.Exec("update task_exec_stage_result_" + strconv.Itoa(taskId) + " set stage_status = 1, create_time = now() "+
 		"where record_id = ? and stage_type = ? and stage_status = 0 ORDER by id LIMIT 1", recordId, stageType).Error
 }
 
-func afterState(taskId int, recordId int, stageType int, stageStatus int, n int) error {
+func AfterState(taskId int, recordId int, stageType int, stageStatus int, n int) error {
 	if ch := chanMap[strconv.Itoa(taskId) + strconv.Itoa(recordId)]; ch != nil {
 		ch <- n + 1
 	}
 	db := common.GetDb()
 	return db.Exec("update task_exec_stage_result_" + strconv.Itoa(taskId) + " set stage_status = ?, update_time = now() " +
 		"where record_id = ? and stage_type = ? and stage_status = 1 ORDER by id LIMIT 1", stageStatus, recordId, stageType).Error
+}
+
+func Success(taskId int, recordId int, taskCode string) error {
+	// 0 表示全部完全
+	if ch := chanMap[strconv.Itoa(taskId) + strconv.Itoa(recordId)]; ch != nil {
+		ch <- 0
+	}
+
+	finishNode(taskId, recordId)
+	db := common.GetDb()
+	err := db.Exec("update tasks set task_status = 2 where task_code = ?", taskCode).Error
+	if err != nil {
+		return err
+	}
+	return db.Exec("update task_exec_recode_" + strconv.Itoa(taskId) + " set task_status = 2, update_time = now() where task_status = 1").Error
+
+
+
 }
 
 func getEnv(stageId int) (env map[string]string, err error) {

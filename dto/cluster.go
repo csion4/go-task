@@ -27,12 +27,16 @@ type WorkerNode struct {
 }
 
 func (wn *WorkerNode) SelectNode() (r WorkerNode) {
-	log.Panic2("数据操作异常", common.GetDb().Where("status = 1 ans node_status = 1 and strategy = 0 order by task_num asc limit 1").Find(&r).Error)
+	log.Panic2("数据操作异常", common.GetDb().Where("status = 1 and node_status = 1 and strategy = 0 order by task_num asc limit 1").Find(&r).Error)
 	return
 }
 
 func (wn *WorkerNode) TaskNumAdd(id int) {
 	log.Panic2("数据操作异常", common.GetDb().Exec("update worker_nodes set task_num = task_num + 1 where id = ?", id).Error)
+}
+
+func (wn *WorkerNode) TaskNumDec(taskId string, recordId int) {
+	log.Panic2("数据操作异常", common.GetDb().Exec("update worker_nodes set task_num = task_num - 1 where id = (select node_id from task_exec_recode_" + taskId + " where id = ?)", recordId).Error)
 }
 
 func (wn *WorkerNode) FindAll() (wns []WorkerNode) {

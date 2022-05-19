@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"com.csion/tasks/common"
 	"time"
 )
 
@@ -13,6 +14,11 @@ type Tasks struct {
 	UpdateTime time.Time `gorm:"default:null"`
 	CreateUser int
 	UpdateUser int	`gorm:"default:null"`
+}
+
+func (t *Tasks) FindIdFromTaskCode(taskCode string) (id int) {
+	log.Panic2("数据操作异常", common.GetDb().Model(&Tasks{}).Select("id").Where("task_code = ?", taskCode).Find(&id).Error)
+	return
 }
 
 type TaskEnvs struct {
