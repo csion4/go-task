@@ -87,17 +87,21 @@ func GetTaskRecord(c *gin.Context)  {
 	pageSize, _ := strconv.Atoi(c.Query("pageSize"))
 
 	taskId := c.Query("taskId")
+	var recodes []dto.TaskExecRecode
 	db := common.GetDb()
 
 	var total int64
-	log.Panic2("数据查询异常：", db.Raw("select count(1) from task_exec_recode_"+taskId).Scan(&total).Error)
+	err := db.Raw("select count(1) from task_exec_recode_" + taskId).Scan(&total).Error
+	if err != nil {
+		response.Success(c, gin.H{"data": recodes, "total": 0}, "查询成功")
+	}
 
-	var recodes []dto.TaskExecRecode
-	log.Panic2("数据查询异常：", db.Raw("select * from task_exec_recode_"+taskId+" order by id desc limit ?, ?", (page-1)*pageSize, pageSize).Scan(&recodes).Error)
+
+	log.Panic2("数据查询异常：", db.Raw("select * from task_exec_recode_" + taskId + " order by id desc limit ?, ?", (page-1)*pageSize, pageSize).Scan(&recodes).Error)
 
 	for n, recode := range recodes {
 		var result []dto.TaskExecStageResult
-		log.Panic2("数据查询异常：", db.Raw("select * from task_exec_stage_result_"+taskId+" where record_id = ? order by id asc ", recode.Id).Scan(&result).Error)
+		log.Panic2("数据查询异常：", db.Raw("select * from task_exec_stage_result_" + taskId + " where record_id = ? order by id asc ", recode.Id).Scan(&result).Error)
 		var LastStageStatus int
 		var LastStage = 1
 		for i, stageResult := range result {

@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/ssh"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -44,8 +45,15 @@ func Track(ip string, userName string, password string, taskHome string) string 
 	log.Panic2("节点连接异常", err)
 	defer session.Close()
 
-	if err := session.Start("chmod 777 taskCluster && ./taskCluster"); err != nil {
+	pipe, err := session.StderrPipe()
+	log.Panic2("节点服务启动异常", err)
+	if err := session.Run("chmod 777 taskCluster && ./taskCluster"); err != nil {
 		log.Panic2("worker节点服务启动异常", err)
+	}
+	r, err := ioutil.ReadAll(pipe)
+	log.Panic2("节点服务启动异常", err)
+	if len(r) > 0 {
+		log.Panic1("节点服务启动异常", string(r))
 	}
 
 	return getPort(sshClient, targetPath)

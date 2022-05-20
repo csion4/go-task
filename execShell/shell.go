@@ -5,6 +5,7 @@ import (
 	"com.csion/tasks/tLog"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -33,11 +34,22 @@ func ExecShell(cmd string, dir string, file *os.File) {
 	}
 	command.Dir = dir
 
+	errPipe, err := command.StderrPipe()
+	checkErr("获取脚本执行结果异常", err, file)
+	defer errPipe.Close()
+
 	pipe, err := command.StdoutPipe()
 	checkErr("获取脚本执行结果异常", err, file)
 	defer pipe.Close()
 
 	checkErr("脚本执行异常", command.Start(), file)
+
+	errOut, err := ioutil.ReadAll(errPipe)
+	checkErr("获取脚本执行结果异常", err, file)
+	if len(errOut) > 0 {
+		_, e := file.Write([]byte("【ERROR】脚本执行异常" + string(errOut) + " \n"))
+		log.Panic2("日志写入异常", e)
+	}
 
 	reader := bufio.NewReader(pipe)
 	for {
